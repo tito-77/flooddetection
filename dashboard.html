@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Detection System - Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        header {
+            background-color: #1e90ff;
+            color: white;
+            padding: 1rem;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        nav {
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1rem;
+            font-size: 1rem;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+        }
+
+        section {
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            border: 1px solid #ccc;
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .report-card {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .report-card:hover {
+            transform: scale(1.02);
+        }
+
+        .report-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .report-card p {
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .high {
+            color: #dc143c;
+        }
+
+        .moderate {
+            color: #ffa500;
+        }
+
+        .low {
+            color: #008000;
+        }
+
+        .report-card button {
+            background-color: #dc143c;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .report-card button:hover {
+            background-color: #c71585;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Flood Detection System</h1>
+        <nav>
+            <a href="index.html">Report Flood</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="login.html" onclick="logout()">Logout</a>
+        </nav>
+    </header>
+
+    <main>
+        <section id="dashboard">
+            <h2>Flood Reports Dashboard</h2>
+            <div id="reports" class="reports-grid"></div>
+        </section>
+        <section id="map"></section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Check if user is logged in and has Aid role
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser || currentUser.role !== 'Aid') {
+            alert('Access denied. Only Aid users can view the dashboard.');
+            window.location.href = 'login.html';
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('currentUser');
+        }
+
+        // Initialize Map
+        const map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Load reports from local storage
+        let reports = JSON.parse(localStorage.getItem('floodReports')) || [];
+
+        // Function to display reports on dashboard
+        function displayReports() {
+            const reportsDiv = document.getElementById('reports');
+            reportsDiv.innerHTML = '';
+            reports.forEach(report => {
+                const reportCard = document.createElement('div');
+                reportCard.className = 'report-card';
+                reportCard.innerHTML = `
+                    <h3>Report #${report.id}</h3>
+                    <p><strong>Location:</strong> ${report.locationName}</p>
+                    <p><strong>Description:</strong> ${report.description}</p>
+                    <p><strong>Severity:</strong> <span class="${report.severity.toLowerCase()}">${report.severity}</span></p>
+                    <p><strong>Coordinates:</strong> (${report.lat}, ${report.lng})</p>
+                    <p><strong>Date:</strong> ${report.date}</p>
+                    <p><strong>Reported by:</strong> ${report.reportedBy}</p>
+                    <button onclick="deleteReport(${report.id})">Delete</button>
+                `;
+                reportsDiv.appendChild(reportCard);
+            });
+        }
+
+        // Function to add marker to map
+        function addMarker(report) {
+            L.marker([report.lat, report.lng])
+                .addTo(map)
+                .bindPopup(`<b>Flood Report</b><br>Location: ${report.locationName}<br>Description: ${report.description}<br>Severity: ${report.severity}<br>Date: ${report.date}<br>Reported by: ${report.reportedBy}`);
+        }
+
+        // Function to delete a report
+        function deleteReport(id) {
+            reports = reports.filter(report => report.id !== id);
+            localStorage.setItem('floodReports', JSON.stringify(reports));
+            displayReports();
+            refreshMap();
+        }
+
+        // Function to refresh map markers
+        function refreshMap() {
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+            reports.forEach(report => addMarker(report));
+        }
+
+        // Initialize dashboard and map
+        displayReports();
+        reports.forEach(report => addMarker(report));
+    </script>
+</body>
+</html>
